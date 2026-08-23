@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+```
+<title>Perpustakaan</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f4f6f8;
+        color: #222;
+    }
+
+    header {
+        background: #222;
+        color: white;
+        padding: 25px;
+        text-align: center;
+    }
+
+    main {
+        max-width: 900px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+
+    .card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    h1, h2, h3 {
+        margin-top: 0;
+    }
+
+    form {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    input {
+        flex: 1;
+        min-width: 200px;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 15px;
+    }
+
+    button {
+        border: none;
+        border-radius: 8px;
+        padding: 11px 16px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-tambah {
+        background: #222;
+        color: white;
+    }
+
+    .btn-edit {
+        background: #ddd;
+        color: #222;
+    }
+
+    .btn-hapus {
+        background: #222;
+        color: white;
+    }
+
+    .book {
+        border: 1px solid #ddd;
+        padding: 18px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+    }
+
+    .book h3 {
+        margin-bottom: 8px;
+    }
+
+    .book p {
+        margin: 5px 0;
+    }
+
+    .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .empty {
+        text-align: center;
+        color: #777;
+        padding: 20px;
+    }
+
+    #editForm {
+        display: none;
+    }
+</style>
+```
+
+</head>
+
+<body>
+
+<header>
+    <h1>📚 Perpustakaan</h1>
+    <p>Mini Library Management System</p>
+</header>
+
+<main>
+
+```
+<!-- TAMBAH BUKU -->
+<div class="card">
+
+    <h2>Tambah Buku</h2>
+
+    <form id="bookForm">
+
+        <input
+            type="text"
+            id="judul"
+            placeholder="Judul buku"
+            required
+        >
+
+        <input
+            type="number"
+            id="jumlah_halaman"
+            placeholder="Jumlah halaman"
+            min="1"
+            required
+        >
+
+        <button class="btn-tambah" type="submit">
+            Tambah Buku
+        </button>
+
+    </form>
+
+</div>
+
+
+<!-- EDIT BUKU -->
+<div class="card" id="editForm">
+
+    <h2>Edit Buku</h2>
+
+    <form id="updateForm">
+
+        <input type="hidden" id="editId">
+
+        <input
+            type="text"
+            id="editJudul"
+            placeholder="Judul buku"
+            required
+        >
+
+        <input
+            type="number"
+            id="editHalaman"
+            placeholder="Jumlah halaman"
+            min="1"
+            required
+        >
+
+        <button class="btn-edit" type="submit">
+            Simpan Perubahan
+        </button>
+
+        <button
+            type="button"
+            onclick="batalEdit()"
+        >
+            Batal
+        </button>
+
+    </form>
+
+</div>
+
+
+<!-- DAFTAR BUKU -->
+<div class="card">
+
+    <h2>Daftar Buku</h2>
+
+    <div id="books">
+        <p class="empty">Memuat buku...</p>
+    </div>
+
+</div>
+```
+
+</main>
+
+<script>
+
+    // =========================
+    // READ
+    // =========================
+
+    async function loadBooks() {
+
+        const response = await fetch("/books");
+
+        const books = await response.json();
+
+        const container = document.getElementById("books");
+
+        container.innerHTML = "";
+
+        if (books.length === 0) {
+
+            container.innerHTML =
+                '<p class="empty">Belum ada buku.</p>';
+
+            return;
+        }
+
+        for (const book of books) {
+
+            const div = document.createElement("div");
+
+            div.className = "book";
+
+            div.innerHTML = `
+                <h3>${book.judul}</h3>
+
+                <p>ID: ${book.id}</p>
+
+                <p>
+                    ${book.jumlah_halaman} halaman
+                </p>
+
+                <div class="actions">
+
+                    <button
+                        class="btn-edit"
+                        onclick="mulaiEdit(
+                            ${book.id},
+                            '${book.judul.replace(/'/g, "\\'")}',
+                            ${book.jumlah_halaman}
+                        )"
+                    >
+                        ✏️ Edit
+                    </button>
+
+                    <button
+                        class="btn-hapus"
+                        onclick="hapusBuku(${book.id})"
+                    >
+                        🗑️ Hapus
+                    </button>
+
+                </div>
+            `;
+
+            container.appendChild(div);
+        }
+    }
+
+
+    // =========================
+    // CREATE
+    // =========================
+
+    document
+        .getElementById("bookForm")
+        .addEventListener("submit", async function(event) {
+
+            event.preventDefault();
+
+            const judul =
+                document.getElementById("judul").value;
+
+            const jumlah_halaman =
+                Number(
+                    document.getElementById(
+                        "jumlah_halaman"
+                    ).value
+                );
+
+
+            const response = await fetch("/book", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    judul: judul,
+                    jumlah_halaman: jumlah_halaman
+                })
+
+            });
+
+
+            if (response.ok) {
+
+                alert("Buku berhasil ditambahkan!");
+
+                this.reset();
+
+                loadBooks();
+
+            } else {
+
+                alert("Gagal menambahkan buku.");
+
+            }
+
+        });
+
+
+    // =========================
+    // DELETE
+    // =========================
+
+    async function hapusBuku(id) {
+
+        const yakin =
+            confirm("Yakin ingin menghapus buku ini?");
+
+        if (!yakin) {
+            return;
+        }
+
+
+        const response =
+            await fetch(`/books/${id}`, {
+
+                method: "DELETE"
+
+            });
+
+
+        if (response.ok) {
+
+            alert("Buku berhasil dihapus!");
+
+            loadBooks();
+
+        } else {
+
+            alert("Buku gagal dihapus.");
+
+        }
+
+    }
+
+
+    // =========================
+    // EDIT FORM
+    // =========================
+
+    function mulaiEdit(id, judul, halaman) {
+
+        document.getElementById("editForm").style.display =
+            "block";
+
+        document.getElementById("editId").value =
+            id;
+
+        document.getElementById("editJudul").value =
+            judul;
+
+        document.getElementById("editHalaman").value =
+            halaman;
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    }
+
+
+    function batalEdit() {
+
+        document.getElementById("editForm").style.display =
+            "none";
+
+    }
+
+
+    // =========================
+    // UPDATE
+    // =========================
+
+    document
+        .getElementById("updateForm")
+        .addEventListener("submit", async function(event) {
+
+            event.preventDefault();
+
+
+            const id =
+                document.getElementById("editId").value;
+
+            const judul =
+                document.getElementById("editJudul").value;
+
+            const jumlah_halaman =
+                Number(
+                    document.getElementById(
+                        "editHalaman"
+                    ).value
+                );
+
+
+            const response =
+                await fetch(`/books/${id}`, {
+
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        judul: judul,
+                        jumlah_halaman: jumlah_halaman
+                    })
+
+                });
+
+
+            if (response.ok) {
+
+                alert("Buku berhasil diupdate!");
+
+                batalEdit();
+
+                this.reset();
+
+                loadBooks();
+
+            } else {
+
+                alert("Gagal mengupdate buku.");
+
+            }
+
+        });
+
+
+    // Jalankan saat halaman dibuka
+
+    loadBooks();
+
+</script>
+
+</body>
+</html>
