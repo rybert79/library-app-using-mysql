@@ -69,7 +69,7 @@ Replace `your_password` with the password of the MySQL `fastapi` user.
 Start the FastAPI application with Uvicorn:
 
 ```bash
-uvicorn app:app --reload
+uvicorn app:app
 ```
 
 By default, the application will be available at:
