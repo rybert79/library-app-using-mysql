@@ -1,25 +1,38 @@
-from fastapi import FastAPI
-from fastapi.exceptions import HTTPException
+import sys
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from fastapi import Request
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import mysql.connector
 import os
 
-app = FastAPI()
-
 load_dotenv()
 password = os.getenv("password_sql")
 
-db = mysql.connector.connect(
-    host="localhost",
-    user="fastapi",
-    password=password,
-    database="perpustakaan"
-)
+try:
+    db = mysql.connector.connect(
+        host="localhost",
+        user="fastapi",
+        password=password,
+        database="perpustakaan"
+    )
+except mysql.connector.errors.InterfaceError:
+    print("###mysql menolak terhubung###")
+    sys.exit(1)
+
 cursor = db.cursor()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    cursor.close()
+    db.close()
+    print("Koneksi DB ditutup")
+
+app = FastAPI(lifespan=lifespan)
 
 class Book(BaseModel):
     judul: str
